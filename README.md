@@ -1,5 +1,3 @@
-# MODIFICONE!
-
 # Baptistery-Data
 A web app to check out and analyse monitoring data of the Baptistery of Pisa. Made with Python and Dash (and love).
 
