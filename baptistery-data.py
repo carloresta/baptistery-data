@@ -583,105 +583,6 @@ def figurePrismDisplacement(p):
     return fig
 
 
-#=========================
-#   STANDALONE FIGURES
-#=========================
-def figurePrismSelection():
-    """
-    A figure from which to select prisms.
-    """
-    fig = go.Figure(layout_template='plotly_white')
-    
-    fig = make_subplots(rows=1, cols=3, 
-                        subplot_titles=('Ground floor', 'First floor', 'Second floor'),
-                        figure=fig
-                       )
-    fig.update_layout(height=350, width=1000,
-                         margin=dict(l=0,r=0,b=0,t=60))
-    
-    ground_floor = ['101', '102', '103', '104', 'P1']
-    first_floor = [p for p in prism_pos.index if (p[0] == '2' or p[0] == '3')]
-    second_floor = [p for p in prism_pos.index if (p[0] == '4' or p[0] == '5')]
-    
-    floors = [ground_floor, first_floor, second_floor]
-    
-    for i, f in enumerate(floors):
-        x = prism_pos.loc[f]['radius']*np.cos(np.deg2rad(prism_pos.loc[f]['angle']))
-        y = prism_pos.loc[f]['radius']*np.sin(np.deg2rad(prism_pos.loc[f]['angle']))
-        # Add the shape of the Baptistery
-        fig.add_shape(type="circle",
-            xref="x", yref="y",
-            x0=-17.80, y0=-17.80, x1=17.80, y1=17.80,
-            line_color="lightgrey",
-            row=1, col=i+1
-        )                
-        fig.add_shape(type="circle",
-            xref="x", yref="y",
-            x0=-15.25, y0=-15.25, x1=15.25, y1=15.25,
-            line_color="lightgrey",
-            line_width=1,
-            row=1, col=i+1
-        )
-        # Add the prisms
-        fig.add_trace(
-            go.Scatter(
-                x=x, y=y,
-                customdata=f,
-                text=f,
-                textfont_size=10,
-                textposition='top center',
-                mode='markers+text',
-                marker_color=colors[1],
-                hovertext=['Prism n. {}'.format(p) 
-                             for p in f],
-                marker_size=10,
-                hoverinfo='text',
-                selected_marker_color='red'
-              ),
-            row=1, col=i+1
-        )
-        
-    # Disable the legend
-    fig.update(layout_showlegend=False)
-    
-    # Format plot
-    fig.update_xaxes(
-        range = (-18, 18),
-        zeroline = False,
-        showgrid = False,
-        visible = False,
-    )
-    fig.update_yaxes(
-        range = (-18, 18),
-        zeroline = False,
-        showgrid = False,
-        visible = False,
-    )
-    fig.update_layout(
-        yaxis1=dict(
-        scaleanchor = "x1",
-        scaleratio = 1,
-        )
-    )
-    fig.update_layout(
-        yaxis2=dict(
-        scaleanchor = "x2",
-        scaleratio = 1,
-        )
-    )
-    fig.update_layout(
-        yaxis3=dict(
-        scaleanchor = "x3",
-        scaleratio = 1,
-        )
-    )
-    
-    fig.update_layout(clickmode='event+select')
-    
-    return fig
-
-fig_prism_selection = figurePrismSelection()
-
 
 def figureSectionRelativeDisplacements(prisms):
     """
@@ -836,6 +737,200 @@ def figurePrismCoupleSelection(selected_prisms):
 
 
 
+#=========================
+#   STANDALONE FIGURES
+#=========================
+def figurePrismSelection():
+    """
+    A figure from which to select prisms.
+    """
+    fig = go.Figure(layout_template='plotly_white')
+    
+    fig = make_subplots(rows=1, cols=3, 
+                        subplot_titles=('Ground floor', 'First floor', 'Second floor'),
+                        figure=fig
+                       )
+    fig.update_layout(height=350, width=1000,
+                         margin=dict(l=0,r=0,b=0,t=60))
+    
+    ground_floor = ['101', '102', '103', '104', 'P1']
+    first_floor = [p for p in prism_pos.index if (p[0] == '2' or p[0] == '3')]
+    second_floor = [p for p in prism_pos.index if (p[0] == '4' or p[0] == '5')]
+    
+    floors = [ground_floor, first_floor, second_floor]
+    
+    for i, f in enumerate(floors):
+        x = prism_pos.loc[f]['radius']*np.cos(np.deg2rad(prism_pos.loc[f]['angle']))
+        y = prism_pos.loc[f]['radius']*np.sin(np.deg2rad(prism_pos.loc[f]['angle']))
+        # Add the shape of the Baptistery
+        fig.add_shape(type="circle",
+            xref="x", yref="y",
+            x0=-17.80, y0=-17.80, x1=17.80, y1=17.80,
+            line_color="lightgrey",
+            row=1, col=i+1
+        )                
+        fig.add_shape(type="circle",
+            xref="x", yref="y",
+            x0=-15.25, y0=-15.25, x1=15.25, y1=15.25,
+            line_color="lightgrey",
+            line_width=1,
+            row=1, col=i+1
+        )
+        # Add the prisms
+        fig.add_trace(
+            go.Scatter(
+                x=x, y=y,
+                customdata=f,
+                text=f,
+                textfont_size=10,
+                textposition='top center',
+                mode='markers+text',
+                marker_color=colors[1],
+                hovertext=['Prism n. {}'.format(p) 
+                             for p in f],
+                marker_size=10,
+                hoverinfo='text',
+                selected_marker_color='red'
+              ),
+            row=1, col=i+1
+        )
+        
+    # Disable the legend
+    fig.update(layout_showlegend=False)
+    
+    # Format plot
+    fig.update_xaxes(
+        range = (-18, 18),
+        zeroline = False,
+        showgrid = False,
+        visible = False,
+    )
+    fig.update_yaxes(
+        range = (-18, 18),
+        zeroline = False,
+        showgrid = False,
+        visible = False,
+    )
+    fig.update_layout(
+        yaxis1=dict(
+        scaleanchor = "x1",
+        scaleratio = 1,
+        )
+    )
+    fig.update_layout(
+        yaxis2=dict(
+        scaleanchor = "x2",
+        scaleratio = 1,
+        )
+    )
+    fig.update_layout(
+        yaxis3=dict(
+        scaleanchor = "x3",
+        scaleratio = 1,
+        )
+    )
+    
+    fig.update_layout(clickmode='event+select')
+    
+    return fig
+
+fig_prism_selection = figurePrismSelection()
+
+
+def figureLevellingChecks():
+    """
+    Returns the contents of a div (a list), with plots of 
+    levelling data vs prism data (vertical component);
+    each plot is contained in a separate Graph object. 
+    """
+    levelling_pruned = levelling_data[[c for c in levelling_data.columns if c[0] == 'L']]
+    corresponding_prisms = [str(p) for p in [205, 305, 206, 306, 207, 307, 208, 308, 209, 309, 210, 310, 211, 311, 212, 312, 201, 301, 202, 302, 203, 303, 204, 304]]
+    prism_z_rel = ((x:= prism_data.loc[:, (corresponding_prisms, 'z')]) - x.iloc[0])*1000.
+    
+    def singleFigure(l,p,lname,pname):
+        """
+        Actually makes the plot. l and p must be array-like or Series
+        with relative vertical displacements of levelling and prism,
+        respectively.
+        """
+        fig = go.Figure(layout_template=None)
+        fig.update_layout(margin = dict(t=40, b=40))
+        fig = make_subplots(specs=[[{"secondary_y": True}]],
+                            figure=fig)
+        fig = reformatPlot(fig, size=[1200, 350], secondary=True)
+
+        fig.add_trace(
+            go.Scatter(
+                x=levelling_data.index,
+                y=l,
+                mode='markers+lines',
+                name=lname,
+                marker_color='#999933',
+                line_color='#999933'
+            ),
+            secondary_y=False,
+        )  
+        
+        fig.add_trace(
+            go.Scatter(
+                x=prism_data.index,
+                y=p[:,0],
+                mode='markers+lines',
+                name=pname,
+                marker_color='#882255',
+                line_color='#882255'
+            ),
+            secondary_y=False,
+        )  
+
+        fig.add_trace(
+            go.Scatter(
+                x=extensimeter_data.index,
+                y=extensimeter_data['F4F8', 'temp'].rolling(24).mean(),
+                line_dash='dot',
+                line_color='gray',
+                name='Temperature'
+            ),
+            secondary_y = True,
+        )    
+
+        fig.add_annotation(
+            xref="x domain",
+            yref="y domain",
+            x=0.02,
+            y=0.95,
+            text='<b>'+ lname + '-' + pname +'</b>',
+            font_family='Roboto',
+            font_color='black',
+            font_size=14,
+            borderpad=4,
+            bordercolor='black',
+            borderwidth=1.5,
+            showarrow=False
+        )
+
+        fig.update_yaxes(title_text="Displacement [mm]", secondary_y=False)
+        fig.update_yaxes(title_text="Temperature [°C]", secondary_y=True)
+
+       # fig.update_layout(
+       #     legend=dict(
+       #         x=0.70, y=0.95
+       #     )
+       # )
+
+        return fig
+    
+    children = [] 
+    for lname, pname in zip(levelling_pruned.columns, corresponding_prisms):
+        graph = dcc.Graph(figure=singleFigure(levelling_pruned[lname].values, prism_z_rel[pname].values, lname, pname))        
+        children.append(graph)
+    
+    return children
+
+divchildren_levelling_checks = figureLevellingChecks() 
+
+
+
 #=================
 #   APP SETUP
 #=================
@@ -895,13 +990,18 @@ tab_info = dbc.Tab([
 
 # CHECKS Tab
 #----This tab will contain data checks:
-#------1) comparison of vertical prisms and levelling
-#------2) ???
 tab_checks = dbc.Tab([
     html.Div([
         html.Br(),
-        html.P('To be completed... 🚧')
-    ])
+        html.P("This tab contains plots to check levelling and prism measurements against each other.",
+          style=dict(color='grey', fontSize='small'))
+    ]),
+    html.Div([
+        dcc.Markdown('## Levelling data *vs* vertical component of prisms'),
+        dcc.Markdown("""
+        Each levelling rod has been paired with the closest prism. Prisms, however, have an average elevation of 7 m, while levelling rods are placed at about 1.6 m above the pavement.        
+        """)
+    ]+divchildren_levelling_checks)
 ], label='CHECKS')
 
 
