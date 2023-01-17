@@ -2,6 +2,8 @@
 #------------
 import numpy as np
 import pandas as pd
+from geopy.distance import distance as geodist
+
 
 # DATA IMPORT
 #--------------
@@ -41,6 +43,8 @@ def readExtensimetersData():
     dt_index = [tmp[cols_to_join[0]].iloc[i] + ' ' + tmp[cols_to_join[1]].iloc[i] for i in range(len(tmp.index))]
     extensimeter_data = pd.DataFrame(tmp[tmp.columns[2:]].values, index=dt_index, columns=tmp.columns[2:])
     extensimeter_data.index = pd.to_datetime(extensimeter_data.index)
+    # Removes measurements if temperature == 0°C (because we think they are outliers)
+    extensimeter_data = extensimeter_data.replace(0.0, np.nan).dropna().copy()
     
     return extensimeter_data
 
@@ -68,4 +72,11 @@ def readSensorPositions():
     return prism_pos, levelling_pos, extensimeter_pos, positions
 
 
+# EARTQUAKE DATA
+#----------------
+def readEarthquakeData():
+    earthquake_data = pd.read_csv('Data/earthquakes.csv', index_col=0, parse_dates=True, delimiter=',')
+    bapt_lat, bapt_lon = 43.7232378, 10.3944417 
+    earthquake_data['Distance'] = [geodist((bapt_lat, bapt_lon), (lat, lon)).km for lat, lon in zip(earthquake_data['Latitude'], earthquake_data['Longitude'])]
 
+    return earthquake_data
