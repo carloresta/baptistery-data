@@ -683,6 +683,159 @@ def figurePrismSelection():
 fig_prism_selection = figurePrismSelection()
 
 
+def figureSectionRelativeDisplacements(prisms):
+    """
+    Produces a plot with the relative displacements of
+    corresponding prisms in a section.
+    """
+    fig = go.Figure(layout_template=None)
+    fig.update_layout(margin = dict(t=40, b=40))
+    fig = make_subplots(specs=[[{"secondary_y": True}]],
+                        figure=fig)
+    fig = reformatPlot(fig, size=[900, 350], secondary=True)
+    
+    dists = np.sqrt(((prism_data[prisms[1]] - prism_data[prisms[0]])**2).sum(axis=1))*1000
+    rel_disp = dists - dists[0]
+    
+    fig.add_trace(
+        go.Scatter(
+            x=prism_data.index,
+            y=rel_disp,
+            mode='markers+lines',
+            name='Relative displacement',
+            marker_color='#009988',
+            line_color='#009988'
+        ),
+        secondary_y=False,
+    )  
+    
+    fig.add_trace(
+        go.Scatter(
+            x=extensimeter_data.index,
+            y=extensimeter_data['F4F8', 'temp'].rolling(24).mean(),
+            line_dash='dot',
+            line_color='gray',
+            name='Temperature'
+        ),
+        secondary_y = True,
+    )    
+    
+    fig.add_annotation(
+        xref="x domain",
+        yref="y domain",
+        x=0.02,
+        y=0.95,
+        text='<b>'+prisms[0] + '-' + prisms[1]+'</b>',
+        font_family='Roboto',
+        font_color='black',
+        font_size=14,
+        borderpad=4,
+        bordercolor='black',
+        borderwidth=1.5,
+        showarrow=False
+    )
+    
+    fig.update_yaxes(title_text="Displacement [mm]", secondary_y=False)
+    fig.update_yaxes(title_text="Temperature [°C]", secondary_y=True)
+    
+    fig.update_layout(
+        legend=dict(
+            x=0.70, y=0.95
+        )
+    )
+    
+    return fig
+
+def figurePrismCoupleSelection(selected_prisms):
+    """
+    A small figure showing which couple of prisms was selected.
+    """
+    fig = go.Figure(layout_template='plotly_white')
+    fig.update_layout(height=250, width=250,
+                         margin=dict(l=0,r=0,b=0,t=0))
+    
+    unselected_prisms = [el for el in prism_pos.index if (el not in selected_prisms and el[0] != '1')]
+    up_x = [(a:=prism_pos.loc[i])['radius'] * np.cos(np.deg2rad(a['angle'])) 
+            for i in unselected_prisms] 
+    up_y = [(a:=prism_pos.loc[i])['radius'] * np.sin(np.deg2rad(a['angle'])) 
+            for i in unselected_prisms]
+    sp_x = [(a:=prism_pos.loc[i])['radius'] * np.cos(np.deg2rad(a['angle']))
+            for i in selected_prisms] 
+    sp_y = [(a:=prism_pos.loc[i])['radius'] * np.sin(np.deg2rad(a['angle']))
+            for i in selected_prisms]
+        
+    # Add the shape of the Baptistery
+    fig.add_shape(type="circle",
+        xref="x", yref="y",
+        x0=-17.80, y0=-17.80, x1=17.80, y1=17.80,
+        line_color="lightgrey"
+    )                
+    fig.add_shape(type="circle",
+        xref="x", yref="y",
+        x0=-15.25, y0=-15.25, x1=15.25, y1=15.25,
+        line_color="lightgrey",
+        line_width=1
+    )
+    
+    # Add unselected prisms
+    fig.add_trace(
+        go.Scatter(x=up_x, y=up_y,
+                  mode='markers',
+                  marker_color='lightblue',
+                  hovertext=['Prism n. {}'.format(i) 
+                             for i in unselected_prisms],
+                  hoverinfo='text'
+                  )
+    )
+    
+    # Add selected prisms
+    fig.add_trace(
+        go.Scatter(x=sp_x, y=sp_y,
+                  mode='markers+text',
+                  text=selected_prisms,
+                  textfont_family='Roboto',
+                  textposition='top center',
+                  textfont_size=12,
+                  marker_color='red',
+                  hovertext=['Prism n. {}'.format(i) 
+                             for i in selected_prisms],
+                  hoverinfo='text'
+                  )
+    )
+    
+    # Connecting line
+    fig.add_shape(type="line",
+            x0=sp_x[0], y0=sp_y[0], 
+            x1=sp_x[1], y1=sp_y[1],
+            line=dict(
+                color='gray',
+                width=2,
+                dash='dash'
+            ))
+    
+    # Disable the legend
+    fig.update(layout_showlegend=False)
+    # Format plot
+    fig.update_layout(dict(
+        xaxis_range = (-20, 20),
+        yaxis_range = (-20, 20),
+        xaxis_zeroline = False,
+        xaxis_showgrid = False,
+        yaxis_zeroline = False,
+        yaxis_showgrid = False,
+        xaxis_visible = False,
+        yaxis_visible = False
+    ))
+    fig.update_yaxes(
+        scaleanchor = "x",
+        scaleratio = 1,
+      )
+    
+    return fig  
+
+
+
+
 #=================
 #   APP SETUP
 #=================
@@ -876,7 +1029,13 @@ tab_section = dbc.Tab([
             width=3, align='center'
             )
         ])
+    ]),
+    html.Br(),
+    html.Div([
+        html.H2('Relative displacement of selected prisms'),
+        html.Div(id='div_relative_displacement_plots')
     ])
+    
 ], label='SECTION')
 
 
@@ -1005,7 +1164,6 @@ def callFigurePrismSectionSelection(selection):
     selected_prisms = selectPrismSection(p)
     return figureSectionSelection(selected_prisms)
 
-
 #---Update prism section plot
 @app.callback(Output('fig_prism_section', 'figure'),
              Input('slider_prism_section_selection', 'value'),
@@ -1025,6 +1183,30 @@ def callFigurePrismSection(selection, daterange, scale_log, scale_dec, fixedbase
     selected_prisms = selectPrismSection(p)
     return figurePrismSection(selected_prisms, daterange, s, f)
 
+#---Plot relative displacements
+@app.callback(Output('div_relative_displacement_plots', 'children'),
+             Input('slider_prism_section_selection', 'value'))
+def callFigureRelativeDisplacements(selection):
+    p = str(selection)
+    if len(p) == 1:
+        p = '0' + p
+    selected_prisms = selectPrismSection(p)
+    selected_prisms.sort()
+    links = [
+        [0,1], [2,3], [4,5], [6,7],
+        [0,2], [1,3], [4,6], [5,7]
+    ]
+    couples = [[selected_prisms[l[0]], selected_prisms[l[1]]] for l in links]
+    
+    children = []
+    for c in couples:
+        row = dbc.Row([
+            dbc.Col([dcc.Graph(figure=figureSectionRelativeDisplacements(c))], width=9),
+            dbc.Col([dcc.Graph(figure=figurePrismCoupleSelection(c))], width=3)         
+        ], align='center')
+        children.append(row)
+        
+    return children
 
 #---------------------
 #    PRISMS tab
