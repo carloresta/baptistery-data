@@ -39,7 +39,7 @@ hatches = ['/', '\\', '|', '-', '+', 'x', 'o', 'O', '.', '*']
 import baptistery_data_input as bdi
 prism_data, levelling_data, extensimeter_data = bdi.readAllData()
 prism_pos, levelling_pos, extensimeter_pos, positions = bdi.readSensorPositions()
-
+earthquake_data = bdi.readEarthquakeData()
 
 #=====================
 #   MISC FUNCTIONS
@@ -583,6 +583,105 @@ def figurePrismDisplacement(p):
     return fig
 
 
+def figurePrismDisplacementTogether(p_list, component):
+    """
+    Produces a figure with the displacement of the prisms contained in
+    *p_list*. You can choose which component to plot.
+    """
+
+    fig = go.Figure(layout_template=None)
+    fig.update_layout(
+        margin = dict(t=40, b=40),
+    )
+
+    fig = make_subplots(specs=[[{"secondary_y": True}]],
+                        shared_xaxes=True,
+                        vertical_spacing=0.0,
+                        figure=fig)
+    fig = reformatPlot(fig, size=[1200, 350], secondary=True)
+
+    for p in p_list:
+        x = prism_data[p, 'x'].values
+        y = prism_data[p, 'y'].values
+        z = prism_data[p, 'z'].values*1000.
+        e, n = xyToEN(x, y)
+        e = e*1000.
+        n = n*1000.
+
+        #de = e - e[0]
+        #dn = n - n[0]
+        #dz = z - z[0]
+
+        de = e - np.array(e).mean()
+        dn = n - np.array(n).mean()
+        dz = z - np.array(z).mean()
+
+
+        dtot = np.sqrt(de**2 + dn**2 + dz**2)
+
+        r = np.sqrt(e**2 + n**2)
+        #dr = r - r[0]
+        dr = r - np.array(r).mean()
+
+
+        alpha = np.arctan(n/e)
+        dalpha = alpha - alpha[0]
+        dtan = r*np.sin(dalpha)
+
+        # Dictionary with components and colors [now unused]
+        components_dict = {
+            'Total': [dtot, colors4[0]],
+            'Radial': [dr, colors4[1]],
+            'Tangential': [dtan, colors4[2]],
+            'Vertical': [dz, colors4[3]]
+        }
+
+
+        fig.add_trace(
+            go.Scatter(
+                x=prism_data.index,
+                y=components_dict[component][0],
+                mode='markers+lines',
+                name=p,
+                #marker_color = components_dict[component][1], # NO SPECIFIED COLORS BECAUSE YOU CAN'T TELL THE PLOTS APART :D
+                #line_color = components_dict[component][1],
+            ),
+            secondary_y = False,
+        )
+
+    # Temperature
+    fig.add_trace(
+        go.Scatter(
+            x=extensimeter_data.index,
+            y=extensimeter_data['F4F8', 'temp'].rolling(24).mean(),
+            line_dash='dot',
+            line_color='gray',
+            name='Temperature'
+        ),
+        secondary_y = True,
+    )
+
+    fig.add_annotation(
+        xref="x domain",
+        yref="y domain",
+        x=0.02,
+        y=0.95,
+        text='<b>'+component+'</b>',
+        font_family='Roboto',
+        font_color='black',
+        font_size=14,
+        borderpad=4,
+        bordercolor='black',
+        borderwidth=1.5,
+        showarrow=False
+    )
+
+    fig.update_yaxes(title_text="Displacement [mm]", secondary_y=False)
+    fig.update_yaxes(title_text="Temperature [°C]", secondary_y=True)
+
+    return fig
+
+
 
 def figureSectionRelativeDisplacements(prisms):
     """
@@ -734,6 +833,74 @@ def figurePrismCoupleSelection(selected_prisms):
     
     return fig  
 
+
+def figureExtensimeter(e, resampling='W'):
+    """
+    Plots extensimeter data with the corresponding temperature.
+    """
+    crack = extensimeter_data.loc[:, (e, 'pos')].resample(resampling).mean()
+    temp = extensimeter_data.loc[:, (e, 'temp')].resample(resampling).mean()
+    index = extensimeter_data.resample(resampling).mean().index
+
+    fig = go.Figure(layout_template=None)
+    fig.update_layout(margin = dict(t=40, b=40))
+    fig = make_subplots(specs=[[{"secondary_y": True}]],
+                        figure=fig)
+    fig = reformatPlot(fig, size=[950, 350], secondary=True)
+    
+    if (resampling == 'W' or resampling == 'M'):
+        mode = 'markers+lines'
+    else:
+        mode = 'lines'
+
+    fig.add_trace(
+        go.Scatter(
+            x=index,
+            y=crack,
+            mode=mode,
+            name='Crack width',
+            marker_color='#DDCC77',
+            line_color='#DDCC77'
+        ),
+        secondary_y=False,
+    )  
+
+    fig.add_trace(
+        go.Scatter(
+            x=index,
+            y=temp,
+            line_dash='dot',
+            line_color='gray',
+            name='Temperature'
+        ),
+        secondary_y = True,
+    )    
+
+    fig.add_annotation(
+        xref="x domain",
+        yref="y domain",
+        x=0.02,
+        y=0.95,
+        text='<b>'+ e +'</b>',
+        font_family='Roboto',
+        font_color='black',
+        font_size=14,
+        borderpad=4,
+        bordercolor='black',
+        borderwidth=1.5,
+        showarrow=False
+    )
+
+    fig.update_yaxes(title_text="Crack width [mm]", secondary_y=False)
+    fig.update_yaxes(title_text="Temperature [°C]", secondary_y=True)
+
+    fig.update_layout(
+        legend=dict(
+            x=0.78, y=0.05
+        )
+    )
+
+    return fig
 
 
 
@@ -929,6 +1096,87 @@ def figureLevellingChecks():
 
 divchildren_levelling_checks = figureLevellingChecks() 
 
+
+def figureExtensimeterSelection(e):
+    """
+    Small plot indicating the position of
+    extensimeter *e*.
+    """
+    fig = go.Figure(layout_template='plotly_white')
+    fig.update_layout(height=250, width=250,
+                         margin=dict(l=0,r=0,b=0,t=0))
+        
+    unselected_ext = [e for e in extensimeter_pos.index]
+    unselected_ext.remove(e)
+    unselected_ext.remove('F4F8') #Removes the thermometer
+    ue_x = [(a:=extensimeter_pos.loc[i])['radius'] * np.cos(np.deg2rad(a['angle'])) 
+            for i in unselected_ext] 
+    ue_y = [(a:=extensimeter_pos.loc[i])['radius'] * np.sin(np.deg2rad(a['angle'])) 
+            for i in unselected_ext]
+    se_x = [(a:=extensimeter_pos.loc[e])['radius'] * np.cos(np.deg2rad(a['angle']))]
+    se_y = [(a:=extensimeter_pos.loc[e])['radius'] * np.sin(np.deg2rad(a['angle']))]
+        
+    # Add the shape of the Baptistery
+    fig.add_shape(type="circle",
+        xref="x", yref="y",
+        x0=-17.80, y0=-17.80, x1=17.80, y1=17.80,
+        line_color="lightgrey"
+    )                
+    fig.add_shape(type="circle",
+        xref="x", yref="y",
+        x0=-15.25, y0=-15.25, x1=15.25, y1=15.25,
+        line_color="lightgrey",
+        line_width=1
+    )
+    
+    # Add unselected extensimeters
+    fig.add_trace(
+        go.Scatter(x=ue_x, y=ue_y,
+                  mode='markers',
+                  marker_color='lightblue',
+                  hovertext=['Extensimeter {}'.format(i) 
+                             for i in unselected_ext],
+                  hoverinfo='text'
+                  )
+    )
+    
+    # Add selected extensimeters
+    fig.add_trace(
+        go.Scatter(x=se_x, y=se_y,
+                  mode='markers+text',
+                  text=[e],
+                  textfont_family='Roboto',
+                  textposition='top center',
+                  textfont_size=12,
+                  marker_color='red',
+                  hovertext=['Extensimeter {}'.format(e)],
+                  hoverinfo='text'
+                  )
+    )
+    
+    
+    # Disable the legend
+    fig.update(layout_showlegend=False)
+    # Format plot
+    fig.update_layout(dict(
+        xaxis_range = (-20, 20),
+        yaxis_range = (-20, 20),
+        xaxis_zeroline = False,
+        xaxis_showgrid = False,
+        yaxis_zeroline = False,
+        yaxis_showgrid = False,
+        xaxis_visible = False,
+        yaxis_visible = False
+    ))
+    fig.update_yaxes(
+        scaleanchor = "x",
+        scaleratio = 1,
+      )
+    
+    return fig
+
+
+extensimeter_positions = [figureExtensimeterSelection(e) for e in ['F3CE', 'F3CF', 'F3D1', 'F3D2', 'F46C', 'F46D', 'F3D0', 'F46B']]
 
 
 #=================
@@ -1141,7 +1389,7 @@ tab_section = dbc.Tab([
 
 
 # PRISMS Tab
-#----This tab will contain section plots.
+#----This tab will contain plots of prism displacement in time.
 tab_prisms = dbc.Tab([
     html.Div([
         html.Br(),
@@ -1156,14 +1404,63 @@ tab_prisms = dbc.Tab([
             - by clicking (hold Shift or Ctrl for multiple selection);
             - using the Lasso- or Box-selection tools (on the toolbar).
         """),
-        dcc.Graph(id='fig_prism_displacement_selection', 
-                  figure=fig_prism_selection) 
+        dbc.Row([
+            dbc.Col([
+                dcc.Graph(id='fig_prism_displacement_selection',
+                  figure=fig_prism_selection),
+            ]),
+            dbc.Col([
+                dbc.Checklist(
+                    options = [
+                        {'label': 'Together', 'value': 1}
+                        ],
+                    value = [0],
+                    id = 'switch_prism_plot_together',
+                    switch = True
+                    )
+            ])
+        ], align='center', justify='end')
     ]),
-    html.Div([
-    html.Br()
-    ]),
+    html.Br(),
+    html.Br(),
     html.Div(id='div_prism_displacement_plots'),
 ], label='PRISMS')
+
+
+# CRACKS Tab
+#----This tab contains crack plots.
+tab_cracks = dbc.Tab([
+    html.Div([
+        html.Br(),
+        html.P("This tab contains plots of crack width (in time) from the extensimeters.",
+          style=dict(color='grey', fontSize='small'))
+    ]),
+    html.Div([
+        html.H2('Variation of crack width'),
+        html.Br(),
+        dbc.Row([
+            dbc.Col([
+                dcc.Markdown('**Resampling frequency**'),
+                dcc.Slider(id='slider_crack_plots_resampling',
+                              min=0, max=3, step=1,
+                              marks={0:'Hourly',
+                                    1:'Daily',
+                                    2:'Weekly',
+                                    3:'Monthly'},
+                              value=2,
+                          )            
+            ]),
+            dbc.Col([
+                dcc.Markdown("""
+                    Use this slider to control how dense the plots are.
+                    **BEWARE**: plotting hourly data (the original dataset) takes a loooooong time!
+                """)
+            ])
+        ], align='center')
+    ]),
+    html.Br(),
+    html.Div(id='div_crack_plots')
+], label='CRACKS')
 
 
 #--------------------
@@ -1183,7 +1480,8 @@ app.layout = dbc.Row([
                             tab_checks,
                             tab_plan,
                             tab_section,
-                            tab_prisms
+                            tab_prisms,
+                            tab_cracks
                         ])
     ])
 ], lg=dict(width=10, offset=1)),
@@ -1313,16 +1611,47 @@ def callFigureRelativeDisplacements(selection):
 #---------------------
 #---Select prisms and plot their displacement
 @app.callback(Output('div_prism_displacement_plots', 'children'),
-             Input('fig_prism_displacement_selection', 'selectedData'))
-def callDivPrismDisplacement(selectedData):
+             Input('fig_prism_displacement_selection', 'selectedData'),
+             Input('switch_prism_plot_together', 'value'))
+def callDivPrismDisplacement(selectedData, together_switch):
     try:
-        prisms = [el['customdata'] for el in selectedData['points']]
-        children = [dcc.Markdown('''
-            In each plot, you can select which traces to exclude or include by clicking on their legend entries. You can isolate a trace by double-clicking it.
-        ''')]
-        children += [dcc.Graph(figure=figurePrismDisplacement(p)) for p in prisms]
+        if sum(together_switch) == 1:
+            prisms = [el['customdata'] for el in selectedData['points']]
+            children = [dcc.Graph(figure=figurePrismDisplacementTogether(prisms, c)) for c in ['Total', 'Radial', 'Vertical', 'Tangential']]
+        else:
+            prisms = [el['customdata'] for el in selectedData['points']]
+            children = [dcc.Markdown('''
+                In each plot, you can select which traces to exclude or include by clicking on their legend entries. You can isolate a trace by double-clicking it.
+            ''')]
+            children += [dcc.Graph(figure=figurePrismDisplacement(p)) for p in prisms]
     except:
         children = dcc.Markdown('Select at least one prism.')
+    return children
+
+
+
+#---------------------
+#    CRACKS tab
+#---------------------
+#---Select resampling frequency and update plots
+@app.callback(Output('div_crack_plots', 'children'),
+             Input('slider_crack_plots_resampling', 'value'))
+def callDivCrackPlots(res_val):
+    res_freqs = ['H', 'D', 'W', 'M']
+    freq = res_freqs[res_val]
+    children = []
+    for i,e in enumerate(['F3CE', 'F3CF', 'F3D1', 'F3D2', 'F46C', 'F46D', 'F3D0', 'F46B']):
+        row = dbc.Row([
+            dbc.Col([
+                    dcc.Graph(figure=figureExtensimeter(e, resampling=freq))
+                        ], width={"size": 9}),
+            dbc.Col([
+                dcc.Graph(figure=extensimeter_positions[i], config=dict(
+                         displayModeBar=False,
+                     ))
+            ], width={"size": 3})
+        ], align='center')
+        children.append(row)
     return children
 
 
